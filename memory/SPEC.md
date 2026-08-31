@@ -11,6 +11,7 @@ Mongo collections: users, restaurants, ai_settings, whatsapp_connections, menu_c
 - Use WhatsApp → Test Simulator to send customer messages; the AI reads the real menu, mutates the cart only through backend tools, computes totals deterministically, and creates an order after explicit confirmation.
 - Open Orders, inspect an order, and advance New → Confirmed → Preparing → Ready → Out for Delivery → Delivered; status notifications are persisted in the conversation and sent through the selected provider.
 - Manage menu, customers, restaurant settings, AI settings, provider configuration, and human handoff.
+- AI replies are normalized to WhatsApp syntax before persistence and delivery: `*bold*` is used instead of Markdown `**bold**`.
 
 ## Auth
 JWT bearer tokens are stored by the frontend in localStorage and sent in the Authorization header. Every protected query is scoped to the authenticated user’s restaurant.

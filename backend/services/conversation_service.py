@@ -1,4 +1,5 @@
 import logging
+import re
 
 from database import NO_ID, db, new_id, now_iso
 from events import bus
@@ -7,6 +8,12 @@ from whatsapp.base import IncomingMessage
 from whatsapp.service import whatsapp_service
 
 logger = logging.getLogger(__name__)
+_DOUBLE_BOLD = re.compile(r"\*\*(.+?)\*\*", re.DOTALL)
+
+
+def normalize_whatsapp_text(text: str) -> str:
+    """Convert model Markdown bold to WhatsApp bold before storage or delivery."""
+    return _DOUBLE_BOLD.sub(r"*\1*", text)
 
 
 async def _get_or_create_customer(restaurant_id: str, phone: str, name: str | None) -> dict:
@@ -62,6 +69,7 @@ async def handle_incoming(msg: IncomingMessage) -> dict | None:
     reply, created_order = await ai_service.generate_reply(
         restaurant=restaurant, ai_settings=settings, conversation=conversation, customer=customer,
         categories=categories, items=items, recent_messages=list(reversed(recent)), incoming_text=msg.text)
+    reply = normalize_whatsapp_text(reply)
     reply_message = await _save_message(conversation, msg.restaurant_id, "out", "ai", reply, msg.provider)
     try:
         sent = await whatsapp_service.send_customer_message(msg.restaurant_id, msg.customer_phone, reply)

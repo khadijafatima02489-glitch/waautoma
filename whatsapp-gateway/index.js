@@ -23,6 +23,19 @@ const sessionDir = (rid) => path.join(SESSIONS_DIR, rid.replace(/[^a-zA-Z0-9_-]/
 const phoneFromJid = (jid) => (jid || "").split("@")[0].split(":")[0];
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+async function resolveMessageJid(sock, message) {
+  const primary = message.key.remoteJid || "";
+  if (!primary.endsWith("@lid")) return primary;
+  if (message.key.remoteJidAlt) return message.key.remoteJidAlt;
+  try {
+    const mapped = await sock.signalRepository?.lidMapping?.getPNForLID(primary);
+    if (mapped) return mapped;
+  } catch (error) {
+    logger.warn(`[lid] mapping failed for ${primary}: ${error.message}`);
+  }
+  return primary;
+}
+
 async function forwardIncoming(rid, msg) {
   try { await axios.post(`${BACKEND_URL}/api/webhooks/whatsapp/baileys/${rid}`, msg, { headers: { "x-gateway-secret": SECRET }, timeout: 15000 }); }
   catch (error) { logger.error(`forward failed for ${msg.phone}: ${error.message}`); }
@@ -50,7 +63,7 @@ async function startSession(rid) {
       // Newer multi-device accounts may expose a non-routable @lid JID. The
       // alternate JID carries the actual phone number and must be used for replies.
       const primaryJid = message.key.remoteJid || "";
-      const jid = primaryJid.endsWith("@lid") && message.key.remoteJidAlt ? message.key.remoteJidAlt : primaryJid;
+      const jid = await resolveMessageJid(sock, message);
       if (jid.endsWith("@g.us") || jid === "status@broadcast") continue;
       const text = message.message.conversation || message.message.extendedTextMessage?.text || message.message.imageMessage?.caption || message.message.buttonsResponseMessage?.selectedDisplayText || "";
       if (!text.trim()) continue;
