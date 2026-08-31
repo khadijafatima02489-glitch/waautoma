@@ -16,4 +16,4 @@ Mongo collections: users, restaurants, ai_settings, whatsapp_connections, menu_c
 JWT bearer tokens are stored by the frontend in localStorage and sent in the Authorization header. Every protected query is scoped to the authenticated user’s restaurant.
 
 ## Integrations
-The backend uses the Emergent Universal LLM key with `emergentintegrations` and Gemini `gemini-3-flash-preview`. The Simulator is fully usable without external WhatsApp credentials; Baileys, Evolution, and Meta remain configuration-dependent.
+The backend uses the Emergent Universal LLM key with `emergentintegrations` and Gemini `gemini-3-flash-preview`. The Simulator is fully usable without external WhatsApp credentials. Baileys is a free self-hosted QR provider with per-restaurant persistent sessions under `whatsapp-gateway/sessions`; Evolution and Meta remain configuration-dependent.

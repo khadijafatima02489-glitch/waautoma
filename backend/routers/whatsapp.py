@@ -1,5 +1,5 @@
 import os
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, HTTPException
 from pydantic import BaseModel
 
 from auth import get_current_restaurant_id
@@ -20,6 +20,10 @@ class MetaConfig(BaseModel):
     meta_phone_number_id: str | None = None
     meta_waba_id: str | None = None
     meta_verify_token: str | None = None
+
+class SendBody(BaseModel):
+    to: str
+    text: str
 
 
 def _mask(value): return "" if not value else ("••••" if len(value) <= 6 else value[:3] + "••••" + value[-3:])
@@ -82,3 +86,12 @@ async def status(rid: str = Depends(get_current_restaurant_id)):
     st = await (await get_whatsapp_provider(rid)).get_connection_status()
     await db.whatsapp_connections.update_one({"restaurant_id": rid}, {"$set": {"status": st.status}})
     result = _public(await _get_conn(rid)); result.update({"detail": st.detail, "qr_code": st.qr_code}); return result
+
+
+@router.post("/send")
+async def send_message(body: SendBody, rid: str = Depends(get_current_restaurant_id)):
+    provider = await get_whatsapp_provider(rid)
+    sent = await provider.send_message(body.to.strip(), body.text.strip())
+    if not sent:
+        raise HTTPException(status_code=409, detail="WhatsApp provider is not connected")
+    return {"ok": True}

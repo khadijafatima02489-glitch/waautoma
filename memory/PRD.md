@@ -8,3 +8,4 @@ Imported from `seri-student/waautomation` main branch and migrated into the star
 - Simulator accepts natural-language order messages and persists the conversation/order.
 - Staff can update order status and see status messages in the conversation.
 - External WhatsApp providers are configuration-ready but not claimed as live without credentials.
+- Baileys QR pairing persists its multi-file session, forwards inbound messages into the AI ordering engine, and sends replies/status notifications through the paired WhatsApp account.
