@@ -1,0 +1,5 @@
+import { Badge } from "@/components/ui/badge";
+
+const statusStyles: Record<string, string> = { New: "bg-amber-100 text-amber-800", Confirmed: "bg-sky-100 text-sky-800", Preparing: "bg-orange-100 text-orange-800", Ready: "bg-emerald-100 text-emerald-800", "Out for Delivery": "bg-teal-100 text-teal-800", Delivered: "bg-stone-200 text-stone-800", Cancelled: "bg-rose-100 text-rose-800" };
+export function StatusBadge({ status }: { status: string }) { return <Badge data-testid={`status-badge-${status.toLowerCase().replaceAll(" ", "-")}`} className={`border-0 ${statusStyles[status] || "bg-stone-100 text-stone-700"}`}>{status}</Badge>; }
+export function ConnectionBadge({ status = "disconnected" }: { status?: string }) { const value = status.toLowerCase(); return <Badge data-testid="connection-status" className={value === "connected" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}><span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${value === "connected" ? "bg-emerald-500" : "bg-amber-500"}`} />{value}</Badge>; }
