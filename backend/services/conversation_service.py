@@ -64,9 +64,11 @@ async def handle_incoming(msg: IncomingMessage) -> dict | None:
         categories=categories, items=items, recent_messages=list(reversed(recent)), incoming_text=msg.text)
     reply_message = await _save_message(conversation, msg.restaurant_id, "out", "ai", reply, msg.provider)
     try:
-        await whatsapp_service.send_customer_message(msg.restaurant_id, msg.customer_phone, reply)
+        sent = await whatsapp_service.send_customer_message(msg.restaurant_id, msg.customer_phone, reply)
+        if not sent:
+            logger.warning("outbound reply was not accepted by provider=%s phone=%s", msg.provider, msg.customer_phone)
     except Exception as exc:
-        logger.warning("send failed: %s", exc)
+        logger.warning("send failed provider=%s phone=%s: %s", msg.provider, msg.customer_phone, exc)
     if created_order:
         await bus.publish(msg.restaurant_id, "new_order", {"order": created_order})
     return reply_message
