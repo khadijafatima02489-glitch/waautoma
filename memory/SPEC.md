@@ -12,6 +12,7 @@ Mongo collections: users, restaurants, ai_settings, whatsapp_connections, menu_c
 - Open Orders, inspect an order, and advance New → Confirmed → Preparing → Ready → Out for Delivery → Delivered; status notifications are persisted in the conversation and sent through the selected provider.
 - Manage menu, customers, restaurant settings, AI settings, provider configuration, and human handoff.
 - AI replies are normalized to WhatsApp syntax before persistence and delivery: `*bold*` is used instead of Markdown `**bold**`.
+- Meta Cloud API has a tenant-scoped masked credential form for App ID, App Secret, Graph URL, Phone Number ID, WABA ID, Access Token, and Verify Token; blank secret fields never overwrite saved secrets and webhook URLs use the configured public app URL.
 
 ## Auth
 JWT bearer tokens are stored by the frontend in localStorage and sent in the Authorization header. Every protected query is scoped to the authenticated user’s restaurant.

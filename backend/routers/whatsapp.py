@@ -15,6 +15,8 @@ class EvolutionConfig(BaseModel):
     evolution_api_key: str | None = None
     evolution_instance_name: str | None = None
 class MetaConfig(BaseModel):
+    meta_app_id: str | None = None
+    meta_app_secret: str | None = None
     meta_graph_api_url: str | None = None
     meta_access_token: str | None = None
     meta_phone_number_id: str | None = None
@@ -27,6 +29,7 @@ class SendBody(BaseModel):
 
 
 def _mask(value): return "" if not value else ("••••" if len(value) <= 6 else value[:3] + "••••" + value[-3:])
+META_SECRETS = {"meta_app_secret", "meta_access_token"}
 
 
 async def _get_conn(rid):
@@ -39,14 +42,12 @@ async def _get_conn(rid):
 
 def _public(conn, base_url=None):
     conn = clean(conn) or {}; app_url = (base_url or os.environ.get("APP_URL", "")).rstrip("/")
-    return {"provider": conn.get("provider", "simulator"), "status": conn.get("status", "disconnected"), "connected_number": conn.get("connected_number"), "last_connected_at": conn.get("last_connected_at"), "logs": conn.get("logs", [])[-15:], "evolution": {"evolution_api_url": conn.get("evolution_api_url", ""), "evolution_api_key_masked": _mask(conn.get("evolution_api_key", "")), "evolution_instance_name": conn.get("evolution_instance_name", ""), "configured": bool(conn.get("evolution_api_url") or os.environ.get("EVOLUTION_API_URL"))}, "meta": {"meta_phone_number_id": conn.get("meta_phone_number_id", ""), "meta_waba_id": conn.get("meta_waba_id", ""), "meta_access_token_masked": _mask(conn.get("meta_access_token", "")), "meta_verify_token": conn.get("meta_verify_token", ""), "webhook_url": f"{app_url}/api/webhooks/whatsapp/meta", "configured": bool(conn.get("meta_access_token") and conn.get("meta_phone_number_id"))}, "evolution_webhook_url": f"{app_url}/api/webhooks/whatsapp/evolution/{conn.get('restaurant_id')}"}
+    return {"provider": conn.get("provider", "simulator"), "status": conn.get("status", "disconnected"), "connected_number": conn.get("connected_number"), "last_connected_at": conn.get("last_connected_at"), "logs": conn.get("logs", [])[-15:], "evolution": {"evolution_api_url": conn.get("evolution_api_url", ""), "evolution_api_key_masked": _mask(conn.get("evolution_api_key", "")), "evolution_instance_name": conn.get("evolution_instance_name", ""), "configured": bool(conn.get("evolution_api_url") or os.environ.get("EVOLUTION_API_URL"))}, "meta": {"meta_app_id": conn.get("meta_app_id", ""), "meta_app_secret_masked": _mask(conn.get("meta_app_secret", "")), "meta_graph_api_url": conn.get("meta_graph_api_url", "https://graph.facebook.com/v21.0"), "meta_phone_number_id": conn.get("meta_phone_number_id", ""), "meta_waba_id": conn.get("meta_waba_id", ""), "meta_access_token_masked": _mask(conn.get("meta_access_token", "")), "meta_verify_token_masked": _mask(conn.get("meta_verify_token", "")), "webhook_url": f"{app_url}/api/webhooks/whatsapp/meta", "configured": bool(conn.get("meta_access_token") and conn.get("meta_phone_number_id"))}, "evolution_webhook_url": f"{app_url}/api/webhooks/whatsapp/evolution/{conn.get('restaurant_id')}"}
 
 
 @router.get("/config")
 async def get_config(request: Request, rid: str = Depends(get_current_restaurant_id)):
-    host = request.headers.get("x-forwarded-host") or request.headers.get("host")
-    proto = request.headers.get("x-forwarded-proto", request.url.scheme)
-    return _public(await _get_conn(rid), f"{proto}://{host}" if host else None)
+    return _public(await _get_conn(rid))
 
 
 @router.post("/provider")
@@ -63,7 +64,9 @@ async def set_evolution(body: EvolutionConfig, rid: str = Depends(get_current_re
 
 @router.put("/meta")
 async def set_meta(body: MetaConfig, rid: str = Depends(get_current_restaurant_id)):
-    await db.whatsapp_connections.update_one({"restaurant_id": rid}, {"$set": {k: v for k, v in body.model_dump().items() if v is not None}})
+    updates = {k: v for k, v in body.model_dump().items() if v is not None and (k not in META_SECRETS or v.strip())}
+    if updates:
+        await db.whatsapp_connections.update_one({"restaurant_id": rid}, {"$set": updates})
     return _public(await _get_conn(rid))
 
 
