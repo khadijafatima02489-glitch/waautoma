@@ -53,6 +53,11 @@ async def _save_message(conversation, restaurant_id, direction, sender, text, pr
 
 
 async def handle_incoming(msg: IncomingMessage) -> dict | None:
+    from services.subscription_service import ensure_subscription
+    subscription = await ensure_subscription(msg.restaurant_id)
+    if subscription.get("status") in {"EXPIRED", "SUSPENDED"}:
+        logger.warning("AI blocked for restaurant=%s subscription=%s", msg.restaurant_id, subscription.get("status"))
+        return None
     restaurant = await db.restaurants.find_one({"id": msg.restaurant_id}, NO_ID)
     if not restaurant:
         return None

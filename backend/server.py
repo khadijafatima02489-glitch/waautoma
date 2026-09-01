@@ -13,7 +13,7 @@ load_dotenv(ROOT_DIR / '.env', override=True)
 # MongoDB connection
 from database import client
 import seed
-from routers import (analytics, auth, conversations, customers, menu, orders,
+from routers import (admin, analytics, auth, billing, conversations, customers, menu, orders,
                      restaurant, simulator, stream, webhooks, whatsapp)
 
 
@@ -36,7 +36,7 @@ async def root():
 async def health():
     return {"status": "healthy"}
 
-for router in (auth.router, restaurant.router, menu.router, orders.router, customers.router,
+for router in (auth.router, admin.router, billing.router, restaurant.router, menu.router, orders.router, customers.router,
                analytics.router, whatsapp.router, conversations.router, simulator.router,
                webhooks.router, stream.router):
     api_router.include_router(router)

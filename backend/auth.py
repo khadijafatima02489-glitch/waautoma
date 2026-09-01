@@ -65,4 +65,8 @@ async def get_current_restaurant_id(user: dict = Depends(get_current_user)) -> s
     rid = user.get("restaurant_id")
     if not rid:
         raise HTTPException(status_code=403, detail="No restaurant associated with this account")
+    from services.subscription_service import ensure_subscription
+    subscription = await ensure_subscription(rid)
+    if subscription.get("status") in {"EXPIRED", "SUSPENDED"}:
+        raise HTTPException(status_code=402, detail={"code": "SUBSCRIPTION_BLOCKED", "status": subscription.get("status"), "message": "Your subscription has expired. Please complete your payment to continue using the platform."})
     return rid

@@ -16,7 +16,7 @@ class RegisterBody(BaseModel):
 
 
 class LoginBody(BaseModel):
-    email: EmailStr
+    email: str
     password: str
 
 
@@ -30,6 +30,8 @@ async def _default_restaurant(name):
 
 @router.post("/register")
 async def register(body: RegisterBody):
+    raise HTTPException(status_code=403, detail="Self-service registration is disabled. Contact the Super Admin.")
+    # Kept below for future controlled self-service onboarding.
     email = body.email.lower()
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -40,13 +42,18 @@ async def register(body: RegisterBody):
 
 @router.post("/login")
 async def login(body: LoginBody):
-    email = body.email.lower()
-    user = await db.users.find_one({"email": email})
+    email = body.email.lower().strip()
+    user = await db.users.find_one({"$or": [{"email": email}, {"username": email}]})
     if not user or not verify_password(body.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    return {"access_token": create_access_token(user["id"], email), "token_type": "bearer", "user": {"id": user["id"], "email": email, "name": user.get("name"), "restaurant_id": user.get("restaurant_id")}}
+    return {"access_token": create_access_token(user["id"], user["email"]), "token_type": "bearer", "user": {"id": user["id"], "email": user["email"], "name": user.get("name"), "role": user.get("role"), "restaurant_id": user.get("restaurant_id")}}
 
 
 @router.get("/me")
 async def me(user: dict = Depends(get_current_user)):
-    return {"user": user, "restaurant": clean(await db.restaurants.find_one({"id": user.get("restaurant_id")}, NO_ID))}
+    restaurant = clean(await db.restaurants.find_one({"id": user.get("restaurant_id")}, NO_ID)) if user.get("restaurant_id") else None
+    subscription = None
+    if user.get("restaurant_id"):
+        from services.subscription_service import ensure_subscription
+        subscription = await ensure_subscription(user["restaurant_id"])
+    return {"user": user, "restaurant": restaurant, "subscription": subscription}

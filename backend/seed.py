@@ -2,6 +2,7 @@ import os
 
 from auth import hash_password, verify_password
 from database import NO_ID, db, new_id, now_iso
+from services.subscription_service import ensure_subscription
 
 DEMO_RESTAURANT_ID = "demo-pizza-palace"
 
@@ -19,6 +20,13 @@ async def seed():
         await db.users.insert_one({"id": new_id(), "email": email, "password_hash": hash_password(password), "name": "Pizza Palace Owner", "role": "owner", "restaurant_id": DEMO_RESTAURANT_ID, "created_at": now_iso()})
     elif not verify_password(password, existing["password_hash"]):
         await db.users.update_one({"email": email}, {"$set": {"password_hash": hash_password(password), "restaurant_id": DEMO_RESTAURANT_ID}})
+    await db.users.update_one({"email": email}, {"$set": {"role": "RESTAURANT_ADMIN", "username": "pizza_palace"}})
+    super_email = os.environ.get("SUPER_ADMIN_EMAIL", "admin@restaurantai.pk").lower()
+    super_password = os.environ.get("SUPER_ADMIN_PASSWORD", "ChangeMe@2026")
+    super_admin = await db.users.find_one({"email": super_email})
+    if not super_admin:
+        await db.users.insert_one({"id": new_id(), "email": super_email, "username": "superadmin", "password_hash": hash_password(super_password), "name": "Platform Super Admin", "role": "SUPER_ADMIN", "restaurant_id": None, "must_change_password": True, "created_at": now_iso()})
+    await ensure_subscription(DEMO_RESTAURANT_ID)
     if not await db.whatsapp_connections.find_one({"restaurant_id": DEMO_RESTAURANT_ID}):
         await db.whatsapp_connections.insert_one({"id": new_id(), "restaurant_id": DEMO_RESTAURANT_ID, "provider": "simulator", "status": "connected", "connected_number": "Simulator", "logs": [f"{now_iso()} — simulator ready"], "created_at": now_iso()})
     if not await db.ai_settings.find_one({"restaurant_id": DEMO_RESTAURANT_ID}):

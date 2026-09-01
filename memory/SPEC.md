@@ -1,10 +1,10 @@
 # AI Restaurant WhatsApp Ordering SaaS
 
 ## What it does
-Restaurant owners manage a seeded Pizza Palace dashboard while a controlled Gemini assistant takes WhatsApp-style orders through the built-in Simulator. The provider abstraction also supports Baileys, Evolution API, and Meta Cloud API configuration.
+Super Admin manages restaurant clients, credentials, manual subscriptions, payments, reminders and platform pricing. Restaurant owners manage a tenant-isolated dashboard while a controlled Gemini assistant takes WhatsApp orders through Baileys or Simulator. Both panels support system-aware dark mode.
 
 ## Data model
-Mongo collections: users, restaurants, ai_settings, whatsapp_connections, menu_categories, menu_items, customers, conversations, messages, orders, counters. Documents use string UUIDs and tenant scope through `restaurant_id`.
+Mongo collections: users, restaurants, subscriptions, payments, notifications, audit_logs, admin_settings, google_sheet_connections, google_sync_jobs, ai_settings, whatsapp_connections, menu_categories, menu_items, customers, conversations, messages, orders, counters. Documents use string UUIDs and tenant scope through `restaurant_id`.
 
 ## Key flows
 - Login with the seeded owner account, then view dashboard analytics and orders.
@@ -15,7 +15,7 @@ Mongo collections: users, restaurants, ai_settings, whatsapp_connections, menu_c
 - Meta Cloud API has a tenant-scoped masked credential form for App ID, App Secret, Graph URL, Phone Number ID, WABA ID, Access Token, and Verify Token; blank secret fields never overwrite saved secrets and webhook URLs use the configured public app URL.
 
 ## Auth
-JWT bearer tokens are stored by the frontend in localStorage and sent in the Authorization header. Every protected query is scoped to the authenticated user’s restaurant.
+JWT bearer tokens are stored by the frontend in localStorage and sent in the Authorization header. Roles are `SUPER_ADMIN` and `RESTAURANT_ADMIN`. Admin routes require the admin role; restaurant APIs are tenant scoped and blocked when subscription status is EXPIRED or SUSPENDED, while billing remains accessible.
 
 ## Integrations
 The backend uses the Emergent Universal LLM key with `emergentintegrations` and Gemini `gemini-3-flash-preview`. The Simulator is fully usable without external WhatsApp credentials. Baileys is a free self-hosted QR provider with per-restaurant persistent sessions under `whatsapp-gateway/sessions`; Evolution and Meta remain configuration-dependent.

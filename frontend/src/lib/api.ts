@@ -46,9 +46,15 @@ export const apiPatch = <T>(path: string, body?: JsonBody) =>
   request<T>("PATCH", path, body ?? null);
 export const apiDelete = <T>(path: string) => request<T>("DELETE", path);
 
-export interface User { id: string; email: string; name: string; role?: string; restaurant_id: string }
+export interface User { id: string; email: string; name: string; role?: string; restaurant_id?: string | null; username?: string; must_change_password?: boolean }
 export interface Restaurant { id: string; name: string; description?: string; address?: string; city?: string; currency?: string; delivery_fee?: number; min_order?: number; prep_time_min?: number; prep_time_max?: number; delivery_time_min?: number; delivery_time_max?: number; ai_greeting?: string; opening_hours?: string; delivery_areas?: string; contact_number?: string; whatsapp_number?: string }
-export interface Session { user: User; restaurant: Restaurant }
+export interface Subscription { id: string; restaurant_id: string; plan: string; status: "TRIAL" | "ACTIVE" | "EXPIRING_SOON" | "EXPIRED" | "SUSPENDED"; payment_status: "PENDING" | "PAID" | "OVERDUE" | "CANCELLED"; start_date: string; end_date: string; next_payment_date: string; monthly_price: number; setup_fee: number; last_payment_date?: string | null; days_remaining: number }
+export interface Session { user: User; restaurant: Restaurant; subscription: Subscription | null }
+export interface AdminSummary { total_restaurants: number; active_restaurants: number; trial_restaurants: number; expiring_soon: number; expired: number; mrr: number; total_orders: number; today_orders: number; total_customers: number; total_revenue: number }
+export interface AdminRestaurant extends Restaurant { owner: string; email: string; username: string; phone?: string; whatsapp_status: string; subscription: Subscription }
+export interface CreatedRestaurant { restaurant: Restaurant; credentials: { username: string; password: string; login_url: string } }
+export interface BillingResponse { subscription: Subscription; payments: Array<{ id: string; amount: number; status: string; paid_at: string; period_end: string }> }
+export interface SheetsConfig { spreadsheet_id: string; google_client_id: string; google_client_secret_masked: string; status: string; tabs: string[]; callback_url: string }
 export interface OrderItem { item_id: string; name: string; qty: number; unit_price: number; line_total: number }
 export interface StatusHistory { status: string; at: string }
 export interface Order { id: string; order_number: number; customer_name: string; customer_phone: string; customer_id: string; order_type: string; address?: string | null; items: OrderItem[]; subtotal: number; delivery_fee: number; total: number; currency: string; status: string; eta_min: number; eta_max: number; status_history: StatusHistory[]; created_at: string; updated_at: string }
