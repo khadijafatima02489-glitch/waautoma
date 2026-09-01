@@ -19,6 +19,7 @@ import GoogleSheets from "@/pages/GoogleSheets";
 import AdminLayout from "@/components/layout/AdminLayout";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminRestaurants from "@/pages/admin/AdminRestaurants";
+import AdminRestaurantDetail from "@/pages/admin/AdminRestaurantDetail";
 import AdminSubscriptions from "@/pages/admin/AdminSubscriptions";
 import AdminSettings from "@/pages/admin/AdminSettings";
 
@@ -32,7 +33,7 @@ function Protected({ children }: { children: ReactNode }) {
 }
 
 function BillingProtected({children}:{children:ReactNode}) { const {session,loading}=useAuth(); if(loading)return <div>Loading…</div>; if(!session)return <Navigate to="/login"/>; if(session.user.role==="SUPER_ADMIN")return <Navigate to="/admin"/>; return <DashboardLayout>{children}</DashboardLayout>; }
-function AdminProtected({children}:{children:ReactNode}) { const {session,loading}=useAuth(); if(loading)return <div>Loading…</div>; if(!session)return <Navigate to="/login"/>; if(session.user.role!=="SUPER_ADMIN")return <Navigate to="/dashboard"/>; return <AdminLayout>{children}</AdminLayout>; }
+function AdminProtected({children}:{children:ReactNode}) { const {session,loading}=useAuth(); if(loading)return <div>Loading…</div>; if(!session)return <Navigate to="/login"/>; if(session.user.role!=="SUPER_ADMIN")return <Navigate to="/dashboard"/>; return <RealtimeProvider><AdminLayout>{children}</AdminLayout></RealtimeProvider>; }
 
 export default function App() {
   return (
@@ -52,6 +53,7 @@ export default function App() {
       <Route path="/billing" element={<BillingProtected><Billing /></BillingProtected>} />
       <Route path="/admin" element={<AdminProtected><AdminDashboard /></AdminProtected>} />
       <Route path="/admin/restaurants" element={<AdminProtected><AdminRestaurants /></AdminProtected>} />
+      <Route path="/admin/restaurants/:id" element={<AdminProtected><AdminRestaurantDetail /></AdminProtected>} />
       <Route path="/admin/subscriptions" element={<AdminProtected><AdminSubscriptions /></AdminProtected>} />
       <Route path="/admin/settings" element={<AdminProtected><AdminSettings /></AdminProtected>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

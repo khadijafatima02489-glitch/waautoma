@@ -23,7 +23,17 @@ class RestaurantUpdate(BaseModel):
     owner_name: str | None = None
     phone: str | None = None
     city: str | None = None
+    address: str | None = None
+    whatsapp_number: str | None = None
+    delivery_fee: float | None = None
+    prep_time_min: int | None = None
+    delivery_time_min: int | None = None
     monthly_price: float | None = None
+
+class CredentialsUpdate(BaseModel):
+    email: EmailStr | None = None
+    username: str | None = None
+    new_password: str | None = None
 
 class StatusUpdate(BaseModel):
     status: str

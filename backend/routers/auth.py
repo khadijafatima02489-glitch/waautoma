@@ -1,4 +1,5 @@
 import os
+import re
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
 
@@ -42,9 +43,11 @@ async def register(body: RegisterBody):
 
 @router.post("/login")
 async def login(body: LoginBody):
-    email = body.email.lower().strip()
-    user = await db.users.find_one({"$or": [{"email": email}, {"username": email}]})
-    if not user or not verify_password(body.password, user["password_hash"]):
+    identifier = body.email.strip()
+    email = identifier.lower()
+    # Username matching is case-insensitive so credentials typed with any casing work.
+    user = await db.users.find_one({"$or": [{"email": email}, {"username": {"$regex": f"^{re.escape(identifier)}$", "$options": "i"}}]})
+    if not user or not (verify_password(body.password, user["password_hash"]) or verify_password(body.password.strip(), user["password_hash"])):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     return {"access_token": create_access_token(user["id"], user["email"]), "token_type": "bearer", "user": {"id": user["id"], "email": user["email"], "name": user.get("name"), "role": user.get("role"), "restaurant_id": user.get("restaurant_id")}}
 

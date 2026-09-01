@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from auth import get_current_user, hash_password, verify_password
 from database import NO_ID, clean, clean_list, db, new_id, now_iso
-from models.admin import AdminProfileUpdate, AdminSettingsUpdate, ExtendBody, ReminderBody, RestaurantCreate, RestaurantUpdate, StatusUpdate
+from models.admin import AdminProfileUpdate, AdminSettingsUpdate, CredentialsUpdate, ExtendBody, ReminderBody, RestaurantCreate, RestaurantUpdate, StatusUpdate
 from services.subscription_service import DEFAULT_MONTHLY, DEFAULT_SETUP, audit, ensure_subscription, parse_day, today
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -47,11 +47,16 @@ async def restaurants(search: str = "", status: str = "", user: dict = Depends(r
     if status: rows=[r for r in rows if r["subscription"]["status"]==status]
     return rows
 
+def username_query(username: str):
+    return {"username": {"$regex": f"^{re.escape(username)}$", "$options": "i"}}
+
 @router.post("/restaurants")
 async def create_restaurant(body: RestaurantCreate, user: dict = Depends(require_admin)):
-    if await db.users.find_one({"email": body.email.lower()}): raise HTTPException(status_code=400, detail="Email already registered")
-    username = body.username or generated_username(body.restaurant_name); password = body.password or generated_password()
-    if await db.users.find_one({"username": username}): username = generated_username(body.restaurant_name)
+    if await db.users.find_one({"email": body.email.lower().strip()}): raise HTTPException(status_code=400, detail="Email already registered")
+    username = (body.username or "").strip() or generated_username(body.restaurant_name); password = (body.password or "").strip() or generated_password()
+    if await db.users.find_one(username_query(username)):
+        if body.username: raise HTTPException(status_code=400, detail="Username already taken. Choose a different one.")
+        username = generated_username(body.restaurant_name)
     rid, uid, start = new_id(), new_id(), parse_day(body.start_date); end = start + timedelta(days=body.duration_days)
     restaurant = {"id": rid, "name": body.restaurant_name, "owner_name": body.owner_name, "phone": body.phone, "whatsapp_number": body.whatsapp_number, "address": body.address, "city": body.city, "currency": "PKR", "delivery_fee": body.delivery_fee, "prep_time_min": body.prep_time_min, "prep_time_max": body.prep_time_min+10, "delivery_time_min": body.delivery_time_min, "delivery_time_max": body.delivery_time_min+10, "created_at": now_iso()}
     await db.restaurants.insert_one(restaurant); await db.users.insert_one({"id": uid, "email": body.email.lower(), "username": username, "password_hash": hash_password(password), "name": body.owner_name, "role": "RESTAURANT_ADMIN", "restaurant_id": rid, "must_change_password": True, "created_at": now_iso()})
@@ -59,6 +64,43 @@ async def create_restaurant(body: RestaurantCreate, user: dict = Depends(require
     await db.whatsapp_connections.insert_one({"id": new_id(), "restaurant_id": rid, "provider": "simulator", "status": "connected", "connected_number": "Simulator", "logs": [], "created_at": now_iso()}); await db.ai_settings.insert_one({"id": new_id(), "restaurant_id": rid, "provider": "gemini", "model": "gemini-3-flash-preview", "personality": "friendly restaurant receptionist", "created_at": now_iso()})
     await audit(user["id"], "CREATED_RESTAURANT", rid, {"email": body.email.lower()})
     return {"restaurant": clean(restaurant), "credentials": {"username": username, "password": password, "login_url": "/login"}}
+
+@router.get("/restaurants/{restaurant_id}")
+async def restaurant_detail(restaurant_id: str, user: dict = Depends(require_admin)):
+    restaurant = clean(await db.restaurants.find_one({"id": restaurant_id}, NO_ID))
+    if not restaurant: raise HTTPException(status_code=404, detail="Restaurant not found")
+    sub = await ensure_subscription(restaurant_id)
+    owner = clean(await db.users.find_one({"restaurant_id": restaurant_id}, NO_ID)) or {}
+    owner.pop("password_hash", None)
+    wa = clean(await db.whatsapp_connections.find_one({"restaurant_id": restaurant_id}, NO_ID)) or {}
+    payments = clean_list(await db.payments.find({"restaurant_id": restaurant_id}, NO_ID).sort("paid_at", -1).to_list(100))
+    orders = await db.orders.find({"restaurant_id": restaurant_id}, NO_ID).sort("created_at", -1).to_list(2000)
+    today_text = today().isoformat()
+    recent = [{"id": o["id"], "order_number": o.get("order_number"), "customer_name": o.get("customer_name", ""), "total": o.get("total", 0), "status": o.get("status", ""), "created_at": o.get("created_at", "")} for o in clean_list(orders[:10])]
+    stats = {"total_orders": len(orders), "today_orders": sum(str(o.get("created_at", "")).startswith(today_text) for o in orders), "total_revenue": sum(float(o.get("total", 0)) for o in orders if o.get("status") != "Cancelled"), "total_customers": await db.customers.count_documents({"restaurant_id": restaurant_id}), "menu_items": await db.menu_items.count_documents({"restaurant_id": restaurant_id})}
+    notifications = clean_list(await db.notifications.find({"restaurant_id": restaurant_id}, NO_ID).sort("created_at", -1).to_list(10))
+    return {"restaurant": restaurant, "owner": {"name": owner.get("name", ""), "email": owner.get("email", ""), "username": owner.get("username", ""), "must_change_password": owner.get("must_change_password", False), "created_at": owner.get("created_at", "")}, "subscription": sub, "whatsapp": {"provider": wa.get("provider", "simulator"), "status": wa.get("status", "disconnected"), "connected_number": wa.get("connected_number", "")}, "payments": payments, "recent_orders": recent, "stats": stats, "notifications": notifications}
+
+@router.put("/restaurants/{restaurant_id}/credentials")
+async def update_credentials(restaurant_id: str, body: CredentialsUpdate, user: dict = Depends(require_admin)):
+    account = await db.users.find_one({"restaurant_id": restaurant_id})
+    if not account: raise HTTPException(status_code=404, detail="Restaurant account not found")
+    changes = {}
+    if body.email and body.email.lower() != account.get("email"):
+        if await db.users.find_one({"email": body.email.lower(), "id": {"$ne": account["id"]}}): raise HTTPException(status_code=400, detail="Email already registered")
+        changes["email"] = body.email.lower()
+    if body.username and body.username.strip() and body.username.strip() != account.get("username"):
+        username = body.username.strip()
+        existing = await db.users.find_one({**username_query(username), "id": {"$ne": account["id"]}})
+        if existing: raise HTTPException(status_code=400, detail="Username already taken")
+        changes["username"] = username
+    if body.new_password and body.new_password.strip():
+        if len(body.new_password.strip()) < 6: raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+        changes["password_hash"] = hash_password(body.new_password.strip()); changes["must_change_password"] = True
+    if not changes: raise HTTPException(status_code=400, detail="Nothing to update")
+    await db.users.update_one({"id": account["id"]}, {"$set": changes})
+    await audit(user["id"], "UPDATED_CREDENTIALS", restaurant_id, {k: v for k, v in changes.items() if k != "password_hash"})
+    return {"ok": True, "username": changes.get("username", account.get("username")), "email": changes.get("email", account.get("email")), "password_changed": "password_hash" in changes}
 
 @router.put("/restaurants/{restaurant_id}")
 async def update_restaurant(restaurant_id: str, body: RestaurantUpdate, user: dict = Depends(require_admin)):

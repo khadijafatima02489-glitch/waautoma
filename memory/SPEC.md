@@ -7,6 +7,9 @@ Super Admin manages restaurant clients, credentials, manual subscriptions, payme
 Mongo collections: users, restaurants, subscriptions, payments, notifications, audit_logs, admin_settings, google_sheet_connections, google_sync_jobs, ai_settings, whatsapp_connections, menu_categories, menu_items, customers, conversations, messages, orders, counters. Documents use string UUIDs and tenant scope through `restaurant_id`.
 
 ## Key flows
+- Super Admin: /admin/restaurants list → click a restaurant name to open /admin/restaurants/:id detail page with stats, editable restaurant info, editable credentials (email/username/new password + reset), subscription actions (payment, extend, suspend, reminder), payment history and recent orders. Custom username/password can be supplied at creation.
+- Login accepts email or username (case-insensitive, whitespace-trimmed) at POST /api/auth/login.
+- Admin panel is realtime: SSE /api/stream mirrors all tenant events to SUPER_ADMIN subscribers and invalidates admin queries.
 - Login with the seeded owner account, then view dashboard analytics and orders.
 - Use WhatsApp → Test Simulator to send customer messages; the AI reads the real menu, mutates the cart only through backend tools, computes totals deterministically, and creates an order after explicit confirmation.
 - Open Orders, inspect an order, and advance New → Confirmed → Preparing → Ready → Out for Delivery → Delivered; status notifications are persisted in the conversation and sent through the selected provider.

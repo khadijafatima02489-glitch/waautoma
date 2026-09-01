@@ -67,6 +67,10 @@ export interface Message { id: string; direction: "in" | "out"; sender: string; 
 export interface Simulation { conversation: { id: string; ai_active: boolean; customer_phone: string; customer_name?: string; state: string } | null; messages: Message[] }
 export interface Customer { id: string; name: string; phone: string; total_orders: number; total_spent: number; last_order_at?: string | null }
 
+export interface AdminPayment { id: string; restaurant_id: string; amount: number; status: string; paid_at: string; period_end: string }
+export interface AdminRestaurantDetail { restaurant: Restaurant & { owner_name?: string; phone?: string; created_at?: string }; owner: { name: string; email: string; username: string; must_change_password: boolean; created_at: string }; subscription: Subscription; whatsapp: { provider: string; status: string; connected_number: string }; payments: AdminPayment[]; recent_orders: Array<{ id: string; order_number?: number; customer_name: string; total: number; status: string; created_at: string }>; stats: { total_orders: number; today_orders: number; total_revenue: number; total_customers: number; menu_items: number }; notifications: Array<{ id: string; type: string; message: string; status: string; created_at: string }> }
+export interface CredentialsResult { ok: boolean; username: string; email: string; password_changed: boolean }
+
 export function formatApiError(detail: unknown): string {
   if (detail == null) return "Something went wrong. Please try again.";
   if (typeof detail === "string") return detail;

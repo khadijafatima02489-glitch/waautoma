@@ -5,7 +5,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from database import NO_ID, db
-from events import bus
+from events import ADMIN_CHANNEL, bus
 
 router = APIRouter(prefix="", tags=["stream"])
 
@@ -15,7 +15,10 @@ async def stream(request: Request, token: str = ""):
     try:
         payload = jwt.decode(token, os.environ["JWT_SECRET"], algorithms=["HS256"])
         user = await db.users.find_one({"id": payload.get("sub")}, NO_ID)
-        restaurant_id = user.get("restaurant_id") if user else None
+        if user and user.get("role") == "SUPER_ADMIN":
+            restaurant_id = ADMIN_CHANNEL
+        else:
+            restaurant_id = user.get("restaurant_id") if user else None
     except Exception:
         restaurant_id = None
     if not restaurant_id: return JSONResponse({"detail": "Not authenticated"}, status_code=401)
