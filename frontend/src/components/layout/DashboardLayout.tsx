@@ -11,12 +11,18 @@ const navigation = [["/dashboard", "Dashboard", LayoutDashboard], ["/orders", "O
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { session, logout } = useAuth(); const location = useLocation();
   const waQuery = useQuery({ queryKey: ["whatsapp-config"], queryFn: () => apiGet<WhatsAppConfig>("/whatsapp/config"), refetchInterval: 20000 });
-  return <div data-testid="dashboard-shell" className="flex min-h-screen bg-background text-foreground">
-    <aside className="hidden w-64 flex-col border-r border-[#E5E7E2] bg-white md:flex">
-      <div className="flex items-center gap-3 border-b border-[#E5E7E2] px-6 py-6"><div className="grid h-10 w-10 place-items-center rounded-xl bg-[#D94833] text-white"><Pizza size={20} /></div><div><p data-testid="restaurant-name" className="font-heading font-bold">{session?.restaurant?.name}</p><p className="text-xs text-[#6E736D]">AI Ordering</p></div></div>
-      <nav className="flex-1 space-y-1 px-3 py-5">{navigation.map(([to, label, Icon]) => <NavLink key={to} to={to} data-testid={`nav-${label.toLowerCase().replaceAll(" ", "-")}`} className={({ isActive }) => `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-[background-color,color,transform] duration-200 hover:translate-x-0.5 ${isActive ? "bg-[#2C614F] text-white" : "text-[#6E736D] hover:bg-[#F3F4F1] hover:text-[#1A1D1A]"}`}><Icon size={18} />{label}</NavLink>)}</nav>
-      <div className="flex items-center justify-between border-t border-[#E5E7E2] p-4"><ThemeToggle/><button data-testid="logout-button" onClick={logout} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-[#6E736D] hover:bg-rose-50 hover:text-rose-700"><LogOut size={16} /> Log out</button></div>
+  return <div data-testid="dashboard-shell" className="noise-bg flex min-h-screen bg-background text-foreground">
+    <aside className="hidden w-64 flex-col border-r border-sidebar-border bg-sidebar md:flex">
+      <div className="flex items-center gap-3 border-b border-sidebar-border px-6 py-6">
+        <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/25"><Pizza size={20} /></div>
+        <div className="min-w-0"><p data-testid="restaurant-name" className="truncate font-heading font-bold">{session?.restaurant?.name}</p><p className="text-xs text-muted-foreground">AI Ordering</p></div>
+      </div>
+      <nav className="flex-1 space-y-1 px-3 py-5">{navigation.map(([to, label, Icon]) => <NavLink key={to} to={to} data-testid={`nav-${label.toLowerCase().replaceAll(" ", "-")}`} className={({ isActive }) => `group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-[background-color,color,transform] duration-200 hover:translate-x-0.5 ${isActive ? "bg-primary/10 font-semibold text-primary" : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"}`}>{({ isActive }) => <><span className={`absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary transition-opacity ${isActive ? "opacity-100" : "opacity-0"}`} /><Icon size={18} />{label}</>}</NavLink>)}</nav>
+      <div className="space-y-3 border-t border-sidebar-border p-4">
+        <div className="flex items-center justify-between rounded-xl bg-sidebar-accent px-3 py-2"><span className="text-xs font-semibold text-muted-foreground">WhatsApp</span><ConnectionBadge status={waQuery.data?.status} /></div>
+        <div className="flex items-center justify-between"><ThemeToggle /><button data-testid="logout-button" onClick={logout} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-rose-500/10 hover:text-rose-600"><LogOut size={16} /> Log out</button></div>
+      </div>
     </aside>
-    <main key={location.pathname} className="min-w-0 flex-1 overflow-y-auto p-5 md:p-8 lg:p-10"><div className="mb-6 flex items-center justify-between md:hidden"><p className="font-heading text-lg font-bold">{session?.restaurant?.name}</p><ConnectionBadge status={waQuery.data?.status} /></div>{children}</main>
+    <main key={location.pathname} className="page-enter min-w-0 flex-1 overflow-y-auto p-5 md:p-8 lg:p-10"><div className="mb-6 flex items-center justify-between md:hidden"><p className="font-heading text-lg font-bold">{session?.restaurant?.name}</p><ConnectionBadge status={waQuery.data?.status} /></div>{children}</main>
   </div>;
 }

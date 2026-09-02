@@ -14,6 +14,8 @@ Mongo collections: users, restaurants, subscriptions, payments, notifications, a
 - Use WhatsApp → Test Simulator to send customer messages; the AI reads the real menu, mutates the cart only through backend tools, computes totals deterministically, and creates an order after explicit confirmation.
 - Open Orders, inspect an order, and advance New → Confirmed → Preparing → Ready → Out for Delivery → Delivered; status notifications are persisted in the conversation and sent through the selected provider.
 - Manage menu, customers, restaurant settings, AI settings, provider configuration, and human handoff.
+- Menu command center: stats bar, category pills with counts, grid/table views, availability filter, dish dialog (image URL + presets, tags, original_price discount), instant AI-availability switch, category rename, bulk availability toggle and bulk price adjust (POST /api/menu/bulk-availability, /api/menu/bulk-price, PUT /api/menu/categories/{id}). MenuItem now has tags[] and original_price.
+- UI theme: Plus Jakarta Sans body / Space Grotesk headings / JetBrains Mono numbers, light #F8F9FA / dark #0D1111 command-center palette, sonner toasts mounted globally.
 - AI replies are normalized to WhatsApp syntax before persistence and delivery: `*bold*` is used instead of Markdown `**bold**`.
 - Meta Cloud API has a tenant-scoped masked credential form for App ID, App Secret, Graph URL, Phone Number ID, WABA ID, Access Token, and Verify Token; blank secret fields never overwrite saved secrets and webhook URLs use the configured public app URL.
 
